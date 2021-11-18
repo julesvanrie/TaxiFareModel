@@ -5,6 +5,8 @@ from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 
+from google.cloud import storage
+
 import mlflow
 from mlflow.tracking import MlflowClient
 from memoized_property import memoized_property
@@ -13,9 +15,12 @@ import joblib
 from TaxiFareModel.data import get_data, clean_data
 from TaxiFareModel.encoders import TimeFeaturesEncoder, DistanceTransformer
 from TaxiFareModel.utils import compute_rmse
+from TaxiFareModel.params import *
+from TaxiFareModel.gcp import storage_upload
+
 
 MLFLOW_URI = "https://mlflow.lewagon.co/"
-EXPERIMENT_NAME = "[BE] [Brussels] [julesvanrie] TaxiFare 0.0.2"
+EXPERIMENT_NAME = "[BE] [Brussels] [julesvanrie] TaxiFare 0.0.3"
 
 class Trainer():
 
@@ -98,10 +103,24 @@ class Trainer():
     def mlflow_log_metric(self, key, value):
         self.mlflow_client.log_metric(self.mlflow_run.info.run_id, key, value)
 
+    def upload_model_to_gcp(self):
+        client = storage.Client()
+        bucket = client.bucket(BUCKET_NAME)
+        blob = bucket.blob(STORAGE_LOCATION)
+        blob.upload_from_filename('model.joblib')
+
     def save_model(self):
-        """ Save the trained model into a model.joblib file """
-        joblib.dump(self.pipeline, 'models/model.joblib')
-        pass
+        """method that saves the model into a .joblib file and uploads it on Google Storage /models folder
+        HINTS : use joblib library and google-cloud-storage"""
+
+        # saving the trained model to disk is mandatory to then beeing able to upload it to storage
+        # Implement here
+        joblib.dump(self.pipeline, 'model.joblib')
+        print("saved model.joblib locally")
+
+        # Implement here
+        storage_upload(model_directory=MODEL_VERSION, bucket=BUCKET_NAME, rm=False)
+
 
 if __name__ == "__main__":
     # get data
